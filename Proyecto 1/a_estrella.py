@@ -192,9 +192,86 @@ def a_estrella(inicio, final, grid, ventana):
     g_lineal = 10
     g_diagonal = 14
 
+    current = inicio
+    current.set_text(f"H = {heuristica(current, final)}-G = {g_score[current]}-F = {f_score[current]}")
+    last_current = current
+    while open_set:
+        open_set.remove(current)
+
+        if not current.es_inicio() and not current == final:
+            if not last_current.es_inicio() and not last_current == final:
+                last_current.hacer_visita()
+                last_current.dibujar(ventana)
+            current.hacer_current()
+
+        current.dibujar(ventana)
+        dibujar_grid(ventana, FILAS, ANCHO_VENTANA)
+        pygame.display.flip()
+        pygame.display.update()
+        pygame.time.delay(100)
+
+        fila, col = current.get_pos()
+        print(current.get_numeracion(),
+              f"[ h = {heuristica(current, final)}, g = {g_score[current]}, f = {f_score[current]} ] {current.get_pos()}")
+        f_score.pop(current)
+
+        if current == final:
+            reconstruir_camino(current.get_nodo_dependiente(), grid, ventana)
+            return
+
+        movimientos = [
+            (-1, -1, g_diagonal),  # Arriba izquierda
+            (-1, 0, g_lineal),  # Arriba
+            (-1, 1, g_diagonal),  # Arriba derecha
+            (0, -1, g_lineal),  # Izquierda
+            (0, 1, g_lineal),  # Derecha
+            (1, -1, g_diagonal),  # Abajo izquierda
+            (1, 0, g_lineal),  # Abajo
+            (1, 1, g_diagonal)  # Abajo derecha
+        ]
+
+        for movimiento in movimientos:
+            fila_neighbor = fila + movimiento[0]
+            col_neighbor = col + movimiento[1]
+            g = movimiento[2]
+
+            if FILAS > fila_neighbor >= 0 and FILAS > col_neighbor >= 0:
+                neighbor_nodo = grid[fila_neighbor][col_neighbor]
+                if not neighbor_nodo.es_pared():
+                    if not neighbor_nodo.es_visitado():
+                        tentative_g_score = g_score[current] + g
+
+                        if neighbor_nodo in g_score:
+                            if tentative_g_score < g_score[neighbor_nodo]:
+                                g_score[neighbor_nodo] = tentative_g_score
+                                f_score[neighbor_nodo] = heuristica(neighbor_nodo, final) + g_score[neighbor_nodo]
+                                neighbor_nodo.set_nodo_dependiente(current)
+                                open_set.append(neighbor_nodo)
+                                neighbor_nodo.set_text(
+                                    f"H = {heuristica(neighbor_nodo, final)}-G = {g_score[neighbor_nodo]}-F = {f_score[neighbor_nodo]}")
+                        else:
+                            g_score[neighbor_nodo] = tentative_g_score
+                            f_score[neighbor_nodo] = heuristica(neighbor_nodo, final) + g_score[neighbor_nodo]
+                            neighbor_nodo.set_nodo_dependiente(current)
+                            open_set.append(neighbor_nodo)
+                            neighbor_nodo.set_text(
+                                f"H = {heuristica(neighbor_nodo, final)}-G = {g_score[neighbor_nodo]}-F = {f_score[neighbor_nodo]}")
+
+                        if not neighbor_nodo.es_inicio() and not neighbor_nodo == final and not neighbor_nodo.es_visitado():
+                            neighbor_nodo.hacer_visita_neighbor()
+
+                        neighbor_nodo.dibujar(ventana)
+                        dibujar_grid(ventana, FILAS, ANCHO_VENTANA)
+                        pygame.display.flip()
+                        pygame.display.update()
+                        # pygame.time.delay(300)
+
+        last_current = current
+        f_min = min(f_score.values())
+        current = [clave for clave, value in f_score.items() if value == f_min][0]
+
 
 def main(ventana, ancho):
-    FILAS = 10
     grid = crear_grid(FILAS, ancho)
 
     inicio = None
