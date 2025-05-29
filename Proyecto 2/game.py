@@ -122,6 +122,284 @@ fondo_x2 = w
 
 ###############modelos
 
+def cargar_modelo_neural_network():
+    global neural_network_trained_horizontal_ball, neural_network_trained_vertical_ball
+    try:
+        model_path_horizontal_ball = os.path.join(directory_to_save_neural_network, 'neural_network_model_horizontal_ball.keras')
+        neural_network_trained_horizontal_ball = load_model(model_path_horizontal_ball)
+        model_path_vertical_ball = os.path.join(directory_to_save_neural_network, 'neural_network_model_vertical_ball.keras')
+        neural_network_trained_vertical_ball = load_model(model_path_vertical_ball)
+        print("Modelo de red neuronal cargado exitosamente.")
+    except:
+        print("No se pudo cargar el modelo de red neuronal")
+
+
+def predecir_salto_neural_network(velocidad_bala, desplazamiento_bala):
+    if neural_network_trained_horizontal_ball is None:
+        print("El modelo de red neuronal no está cargado.")
+        return False
+
+    # Preparar los datos de entrada
+    input_data = np.array([[velocidad_bala, desplazamiento_bala]])
+
+    # Realizar la predicción
+    prediction = neural_network_trained_horizontal_ball.predict(input_data, verbose=0)
+    # prediction = neural_network_trained.predict(input_data)
+
+    # La predicción será un número entre 0 y 1
+    # Podemos establecer un umbral, por ejemplo, 0.5
+    return prediction[0][0] > 0.5
+
+
+def predecir_retroceso_neural_network(velocidad_bala, desplazamiento_bala):
+    if neural_network_trained_vertical_ball is None:
+        print("El modelo de red neuronal no está cargado.")
+        return False
+
+    # Preparar los datos de entrada
+    input_data = np.array([[velocidad_bala, desplazamiento_bala]])
+
+    # Realizar la predicción
+    prediction = neural_network_trained_vertical_ball.predict(input_data, verbose=0)
+    # prediction = neural_network_trained.predict(input_data)
+
+    # La predicción será un número entre 0 y 1
+    # Podemos establecer un umbral, por ejemplo, 0.5
+    return prediction[0][0] > 0.5
+
+def generate_neural_network():
+    global last_csv_path_saved_for_horizontal_ball, directory_to_save_neural_network, last_csv_path_saved_for_vertical_ball
+
+    # Cargar el dataset
+    df_horizontal_ball = pd.read_csv(os.path.join(last_csv_path_saved_for_horizontal_ball))
+    df_vertical_ball = pd.read_csv(os.path.join(last_csv_path_saved_for_vertical_ball))
+
+    # Separar características (X) y etiquetas (y)
+    X_horizontal = df_horizontal_ball[['Velocidad Bala', 'Desplazamiento Bala']].values
+    y_horizontal = df_horizontal_ball['Estatus Salto'].values
+    X_vertical = df_vertical_ball[['Velocidad Bala', 'Desplazamiento Bala Y']].values
+    y_vertical = df_vertical_ball['Estatus Retroceso'].values
+
+    # Dividir los datos en conjuntos de entrenamiento y prueba
+    X_train_horizontal, X_test_horizontal, y_train_horizontal, y_test_horizontal = train_test_split(X_horizontal, y_horizontal, test_size=0.2, random_state=42)
+    X_train_vertical, X_test_vertical, y_train_vertical, y_test_vertical = train_test_split(X_vertical, y_vertical, test_size=0.2, random_state=42)
+
+    # Crear el modelo de red neuronal
+    model_horizontal_ball = Sequential([
+        Dense(8, input_dim=2, activation='relu'),
+        Dense(4, activation='relu'),
+        Dense(1, activation='sigmoid')
+    ])
+    model_vertical_ball = Sequential([
+        Dense(8, input_dim=2, activation='relu'),
+        Dense(4, activation='relu'),
+        Dense(1, activation='sigmoid')
+    ])
+
+    # Compilar el modelo
+    model_horizontal_ball.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    model_vertical_ball.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+    # Entrenar el modelo
+    model_horizontal_ball.fit(X_train_horizontal, y_train_horizontal, epochs=50, batch_size=32, validation_split=0.2, verbose=1)
+    model_vertical_ball.fit(X_train_vertical, y_train_vertical, epochs=50, batch_size=32, validation_split=0.2, verbose=1)
+
+    # Evaluar el modelo
+    loss_horizontal, accuracy_horizontal = model_horizontal_ball.evaluate(X_test_horizontal, y_test_horizontal, verbose=0)
+    loss_vertical, accuracy_vertical = model_vertical_ball.evaluate(X_test_vertical, y_test_vertical, verbose=0)
+    print(f"\nPrecisión en el conjunto de prueba bala 1: {accuracy_horizontal:.2f}")
+    print(f"Precisión en el conjunto de prueba bala 2: {accuracy_vertical:.2f}")
+
+    # Guardar el modelo
+    os.makedirs(directory_to_save_neural_network, exist_ok=True)
+    save_model(model_horizontal_ball, os.path.join(directory_to_save_neural_network, 'neural_network_model_horizontal_ball.keras'))
+    save_model(model_vertical_ball, os.path.join(directory_to_save_neural_network, 'neural_network_model_vertical_ball.keras'))
+
+    print("Modelo de red neuronal generado y guardado exitosamente.")
+
+
+### ---------------- DESICITION TREE --------------- ###
+
+def cargar_modelo_decision_tree():
+    global decision_tree_trained_horizontal_ball, decision_tree_trained_vertical_ball
+    print(directory_to_save_desition_tree)
+    try:
+        decision_tree_trained_horizontal_ball = joblib.load(directory_to_save_desition_tree + '/decision_tree_model_horizontal_ball.joblib')
+        decision_tree_trained_vertical_ball = joblib.load(directory_to_save_desition_tree + '/decision_tree_model_vertical_ball.joblib')
+        print("Desition tree cargado exitosamente.")
+    except:
+        print("No se pudo cargar el modelo de árbol de decisión")
+
+
+def predecir_salto_desition_tree(velocidad_bala, desplazamiento_bala):
+    global decision_tree_trained_horizontal_ball
+    if decision_tree_trained_horizontal_ball is not None:
+        prediccion = decision_tree_trained_horizontal_ball.predict([[velocidad_bala, desplazamiento_bala]])
+        #print("Predicción de salto: " + str(prediccion[0]))
+        if prediccion[0] == '1':
+            return True
+    return False
+
+def predecir_retroceso_desition_tree(velocidad_bala, desplazamiento_bala):
+    global decision_tree_trained_vertical_ball
+    if decision_tree_trained_vertical_ball is not None:
+        prediccion = decision_tree_trained_vertical_ball.predict([[velocidad_bala, desplazamiento_bala]])
+        #print("Predicción de salto: " + str(prediccion[0]))
+        if prediccion[0] == '1':
+            return True
+    return False
+
+def generate_desition_treee():
+    global last_csv_path_saved_for_horizontal_ball, directory_to_save_desition_tree, last_csv_path_saved_for_vertical_ball
+
+    if last_csv_path_saved_for_horizontal_ball == '' or last_csv_path_saved_for_vertical_ball == '':
+        print('Primero debe de guardar el data set')
+        return
+
+    # Asegurarse de que el directorio existe
+    os.makedirs(directory_to_save_desition_tree, exist_ok=True)
+
+    # Leer el CSV sin encabezados
+    dataset_horizontal_ball = pd.read_csv(last_csv_path_saved_for_horizontal_ball, header=None)
+    dataset_vertical_ball = pd.read_csv(last_csv_path_saved_for_vertical_ball, header=None)
+
+    # Eliminar la primera fila que contiene encabezados incorrectos
+    dataset_cleaned_horizontal_ball = dataset_horizontal_ball.iloc[1:].reset_index(drop=True)
+    dataset_cleaned_horizontal_ball = dataset_cleaned_horizontal_ball.dropna()
+    dataset_cleaned_vertical_ball = dataset_vertical_ball.iloc[1:].reset_index(drop=True)
+    dataset_cleaned_vertical_ball = dataset_cleaned_vertical_ball.dropna()
+
+    # Guardar el CSV limpio sin índice
+    cleaned_csv_path_horizontal_ball = os.path.join(directory_to_save_desition_tree, 'dataset_cleaned_horizontal_ball.csv')
+    dataset_cleaned_horizontal_ball.to_csv(cleaned_csv_path_horizontal_ball, index=False, header=False)
+    print(f"CSV limpio guardado en: {cleaned_csv_path_horizontal_ball}")
+    cleaned_csv_path_vertical_ball = os.path.join(directory_to_save_desition_tree, 'dataset_cleaned_vertical_ball.csv')
+    dataset_cleaned_vertical_ball.to_csv(cleaned_csv_path_vertical_ball, index=False, header=False)
+    #print(f"CSV limpio guardado en: {cleaned_csv_path_vertical_ball}")
+
+    # Definir características (X) y etiquetas (y)
+    X_horizontal = dataset_cleaned_horizontal_ball.iloc[:, :2]  # Las dos primeras columnas son las características
+    y_horizontal = dataset_cleaned_horizontal_ball.iloc[:, 2]  # La tercera columna es la etiqueta
+    X_vertical = dataset_cleaned_vertical_ball.iloc[:, :2]  # Las dos primeras columnas son las características
+    y_vertical = dataset_cleaned_vertical_ball.iloc[:, 2]  # La tercera columna es la etiqueta
+
+    # Dividir los datos en conjunto de entrenamiento y prueba
+    X_train_horizontal, X_test_horizontal, y_train_horizontal, y_test_horizontal = train_test_split(X_horizontal, y_horizontal, test_size=0.2, random_state=42)
+    X_train_vertical, X_test_vertical, y_train_vertical, y_test_vertical = train_test_split(X_vertical, y_vertical, test_size=0.2, random_state=42)
+
+    # Crear el clasificador de Árbol de Decisión
+    clf_horizontal = DecisionTreeClassifier()
+    clf_vertical = DecisionTreeClassifier()
+
+    # Entrenar el modelo
+    clf_horizontal.fit(X_train_horizontal, y_train_horizontal)
+    clf_vertical.fit(X_train_vertical, y_train_vertical)
+
+    # Guardar el arbol de decisión en un archivo PDF
+    pdf_path_horizontal_ball = os.path.join(directory_to_save_desition_tree, 'decision_tree_horizontal_ball.pdf')
+    pdf_path_vertical_ball = os.path.join(directory_to_save_desition_tree, 'decision_tree_vertical_ball.pdf')
+    with PdfPages(pdf_path_horizontal_ball) as pdf:
+        plt.figure(figsize=(12, 8))
+        plot_tree(clf_horizontal, feature_names=['V. Bala', 'D. Bala'], class_names=['C. 0 (Suelo)', 'C. 1 (Salto)'],
+                  filled=True)
+        plt.title("Árbol de Decisión - Horizontal Ball")
+        pdf.savefig()  # Guarda el gráfico en el PDF
+        plt.close()
+    with PdfPages(pdf_path_vertical_ball) as pdf:
+        plt.figure(figsize=(12, 8))
+        plot_tree(clf_vertical, feature_names=['V. Bala', 'D. Bala'], class_names=['C. 0 (Suelo)', 'C. 1 (Salto)'],
+                  filled=True)
+        plt.title("Árbol de Decisión - Vertical Ball")
+        pdf.savefig()
+
+    # Guardar el modelo entrenado COMO JOBLIB en el directorio especificado
+    model_path_horizontal_ball = os.path.join(directory_to_save_desition_tree, 'decision_tree_model_horizontal_ball.joblib')
+    joblib.dump(clf_horizontal, model_path_horizontal_ball)
+    model_path_vertical_ball = os.path.join(directory_to_save_desition_tree, 'decision_tree_model_vertical_ball.joblib')
+    joblib.dump(clf_vertical, model_path_vertical_ball)
+    print(f"Modelo de árbol de decisión guardado en: {model_path_horizontal_ball}")
+
+### ---------------- KNN ----------------- ###
+
+def cargar_modelo_knn():
+    global knn_model_horizontal_ball, knn_model_vertical_ball
+    try:
+        model_path_horizontal_ball = os.path.join(directory_to_save_knn, 'knn_model_horizontal_ball.joblib')
+        knn_model_horizontal_ball = joblib.load(model_path_horizontal_ball)
+        model_path_vertical_ball = os.path.join(directory_to_save_knn, 'knn_model_vertical_ball.joblib')
+        knn_model_vertical_ball = joblib.load(model_path_vertical_ball)
+        print("Modelos KNN cargados exitosamente.")
+    except:
+        print("No se pudo cargar el modelo KNN.")
+
+def predecir_salto_knn(velocidad_bala, desplazamiento_bala):
+    if knn_model_horizontal_ball is None:
+        print("El modelo KNN no está cargado.")
+        return False
+
+    # Preparar los datos de entrada
+    input_data = np.array([[velocidad_bala, desplazamiento_bala]])
+
+    # Realizar la predicción
+    prediction = knn_model_horizontal_ball.predict(input_data)
+
+    # Retornar True si la predicción es 1 (salto), False en caso contrario
+    return prediction[0] == 1
+
+def predecir_retroceso_knn(velocidad_bala, desplazamiento_bala):
+    if knn_model_vertical_ball is None:
+        print("El modelo KNN no está cargado.")
+        return False
+
+    # Preparar los datos de entrada
+    input_data = np.array([[velocidad_bala, desplazamiento_bala]])
+
+    # Realizar la predicción
+    prediction = knn_model_vertical_ball.predict(input_data)
+
+    # Retornar True si la predicción es 1 (salto), False en caso contrario
+    return prediction[0] == 1
+
+def generate_knn_model():
+    global last_csv_path_saved_for_horizontal_ball, directory_to_save_knn, last_csv_path_saved_for_vertical_ball
+
+    # Cargar el dataset
+    df_horizontal = pd.read_csv(os.path.join(last_csv_path_saved_for_horizontal_ball))
+    df_vertical = pd.read_csv(os.path.join(last_csv_path_saved_for_vertical_ball))
+
+    # Separar características (X) y etiquetas (y)
+    X_horizontal = df_horizontal[['Velocidad Bala', 'Desplazamiento Bala']].values
+    y_horizontal = df_horizontal['Estatus Salto'].values
+    X_vertical = df_vertical[['Velocidad Bala', 'Desplazamiento Bala Y']].values
+    y_vertical = df_vertical['Estatus Retroceso'].values
+
+    # Dividir los datos en conjuntos de entrenamiento y prueba
+    X_train_vertical, X_test_vertical, y_train_vertical, y_test_vertical = train_test_split(X_vertical, y_vertical, test_size=0.2, random_state=42)
+    X_train_horizontal, X_test_horizontal, y_train_horizontal, y_test_horizontal = train_test_split(X_horizontal, y_horizontal, test_size=0.2, random_state=42)
+
+    # Crear el modelo KNN
+    knn_horizontal = KNeighborsClassifier(n_neighbors=3)  # Usar 3 vecinos como ejemplo
+    knn_vertical = KNeighborsClassifier(n_neighbors=3)  # Usar 3 vecinos como ejemplo
+
+    # Entrenar el modelo
+    knn_horizontal.fit(X_train_horizontal, y_train_horizontal)
+    knn_vertical.fit(X_train_vertical, y_train_vertical)
+
+    # Evaluar el modelo
+    score_horizontal = knn_horizontal.score(X_test_horizontal, y_test_horizontal)
+    score_vertical = knn_vertical.score(X_test_vertical, y_test_vertical)
+    print(f"Precisión del modelo KNN para la bala vertical: {score_vertical:.2f}")
+    print(f"Precisión del modelo KNN para la bala horizontal: {score_horizontal:.2f}")
+
+    # Guardar el modelo
+    os.makedirs(directory_to_save_knn, exist_ok=True)
+    model_path_vertical_ball = os.path.join(directory_to_save_knn, 'knn_model_vertical_ball.joblib')
+    joblib.dump(knn_vertical, model_path_vertical_ball)
+    print(f"Modelo KNN guardado en: {model_path_vertical_ball}")
+    model_path_horizontal_ball = os.path.join(directory_to_save_knn, 'knn_model_horizontal_ball.joblib')
+    joblib.dump(knn_horizontal, model_path_horizontal_ball)
+    print(f"Modelo KNN guardado en: {model_path_horizontal_ball}")
+
 
 ###########
 
