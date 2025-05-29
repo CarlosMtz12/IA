@@ -161,6 +161,38 @@ def obtener_click_pos(pos, filas, ancho):
     col = x // ancho_nodo
     return fila, col
 
+def reconstruir_camino(nodo, grid, ventana):
+    is_creating = True
+
+    while is_creating:
+        dibujar(ventana, grid, FILAS, ANCHO_VENTANA)
+
+        if nodo.es_inicio():
+            is_creating = False
+
+        if is_creating:
+            nodo.hacer_camino()
+            print(nodo.get_numeracion(), nodo.get_pos())
+            nodo = nodo.get_nodo_dependiente()
+
+
+def heuristica(actually_nodo, objetivo):
+    dist_fila = objetivo.get_pos()[0] - actually_nodo.get_pos()[0]
+    dist_col = objetivo.get_pos()[1] - actually_nodo.get_pos()[1]
+    return (abs(dist_fila) + abs(dist_col)) * 10
+
+def a_estrella(inicio, final, grid, ventana):
+    open_set = [inicio]
+    g_score = {}
+    f_score = {}
+
+    g_score[inicio] = 0
+    f_score[inicio] = heuristica(inicio, final)
+
+    g_lineal = 10
+    g_diagonal = 14
+
+
 def main(ventana, ancho):
     FILAS = 10
     grid = crear_grid(FILAS, ancho)
