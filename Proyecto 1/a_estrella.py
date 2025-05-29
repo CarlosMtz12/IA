@@ -1,6 +1,5 @@
 import pygame
 
-
 pygame.init()
 # Configuraciones iniciales
 ANCHO_VENTANA = 800
@@ -126,7 +125,6 @@ def init_numeration(grid):
     return grid
 
 
-
 def crear_grid(filas, ancho):
     grid = []
     ancho_nodo = ancho // filas
@@ -135,7 +133,9 @@ def crear_grid(filas, ancho):
         for j in range(filas):
             nodo = Nodo(i, j, ancho_nodo, filas)
             grid[i].append(nodo)
+    grid = init_numeration(grid)
     return grid
+
 
 def dibujar_grid(ventana, filas, ancho):
     ancho_nodo = ancho // filas
@@ -144,8 +144,10 @@ def dibujar_grid(ventana, filas, ancho):
         for j in range(filas):
             pygame.draw.line(ventana, GRIS, (j * ancho_nodo, 0), (j * ancho_nodo, ancho))
 
+
 def dibujar(ventana, grid, filas, ancho):
     ventana.fill(BLANCO)
+
     for fila in grid:
         for nodo in fila:
             nodo.dibujar(ventana)
@@ -154,12 +156,14 @@ def dibujar(ventana, grid, filas, ancho):
     pygame.display.flip()
     pygame.display.update()
 
+
 def obtener_click_pos(pos, filas, ancho):
     ancho_nodo = ancho // filas
     y, x = pos
     fila = y // ancho_nodo
     col = x // ancho_nodo
     return fila, col
+
 
 def reconstruir_camino(nodo, grid, ventana):
     is_creating = True
@@ -180,6 +184,7 @@ def heuristica(actually_nodo, objetivo):
     dist_fila = objetivo.get_pos()[0] - actually_nodo.get_pos()[0]
     dist_col = objetivo.get_pos()[1] - actually_nodo.get_pos()[1]
     return (abs(dist_fila) + abs(dist_col)) * 10
+
 
 def a_estrella(inicio, final, grid, ventana):
     open_set = [inicio]
@@ -285,6 +290,11 @@ def main(ventana, ancho):
             if event.type == pygame.QUIT:
                 corriendo = False
 
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    if inicio and fin:
+                        a_estrella(inicio, fin, grid, ventana)
+
             if pygame.mouse.get_pressed()[0]:  # Click izquierdo
                 pos = pygame.mouse.get_pos()
                 fila, col = obtener_click_pos(pos, FILAS, ancho)
@@ -311,5 +321,6 @@ def main(ventana, ancho):
                     fin = None
 
     pygame.quit()
+
 
 main(VENTANA, ANCHO_VENTANA)
